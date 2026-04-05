@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "arXiv Author Agent",
+  "version": "0.1.0",
+  "description": "Chat with an expert AI agent for any arXiv paper, grounded in the paper's full text.",
+
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "https://arxiv.org/*",
+    "https://ar5iv.org/*",
+    "https://export.arxiv.org/*"
+  ],
+
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["https://arxiv.org/abs/*", "https://arxiv.org/pdf/*"],
+      "js": ["content/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "side_panel": {
+    "default_path": "sidebar/sidebar.html"
+  },
+
+  "action": {
+    "default_title": "Open arXiv Agent",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
