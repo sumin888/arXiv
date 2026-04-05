@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.rag import pipeline
-from app.schemas import QueryRequest, QueryResponse
+from app.agent.loop import run_agent
+from app.schemas import ChatRequest, QueryRequest, QueryResponse
 
 
 @asynccontextmanager
@@ -52,6 +53,27 @@ async def query(req: QueryRequest):
     try:
         reply = await pipeline.answer_query(
             conn,
+            arxiv_id=req.arxiv_id.strip(),
+            paper_title=req.title.strip(),
+            abstract=req.abstract.strip(),
+            messages=msgs,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    return QueryResponse(reply=reply)
+
+
+@app.post("/chat", response_model=QueryResponse)
+async def chat(req: ChatRequest):
+    conn = app.state.db
+    msgs = [m.model_dump() for m in req.messages]
+    try:
+        reply = await run_agent(
+            conn=conn,
             arxiv_id=req.arxiv_id.strip(),
             paper_title=req.title.strip(),
             abstract=req.abstract.strip(),

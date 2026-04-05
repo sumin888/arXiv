@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     chunk_size: int = 1200
     chunk_overlap: int = 180
 
+    # Phase 3 — code execution
+    e2b_api_key: str = ""
+
+    # Phase 2 — optional GitHub auth for higher rate limits
+    github_token: str = ""
+
     @property
     def db_path(self) -> Path:
         if self.sqlite_path:

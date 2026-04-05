@@ -8,3 +8,5 @@ openai>=1.40.0
 sqlite-vec>=0.1.0
 python-dotenv>=1.0.0
 pydantic-settings>=2.2.0
+# Phase 3 — sandboxed code execution (optional; set E2B_API_KEY to enable)
+e2b-code-interpreter>=0.0.10

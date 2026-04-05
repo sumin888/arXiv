@@ -95,9 +95,9 @@ async function sendMessage() {
   }
 }
 
-// ── Agent query → FastAPI hybrid RAG (sqlite-vec + FTS5) + Claude
+// ── Agent query → FastAPI tool-calling agent loop (/chat)
 async function queryAgent(_userText) {
-  const res = await fetch(`${API_BASE}/api/query`, {
+  const res = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -105,6 +105,7 @@ async function queryAgent(_userText) {
       title: currentPaper.title || "",
       abstract: currentPaper.abstract || "",
       messages: conversationHistory,
+      tools: [], // empty = all tools enabled server-side
     }),
   });
   const raw = await res.text();
@@ -125,7 +126,7 @@ async function queryAgent(_userText) {
     throw new Error(msg || res.statusText);
   }
   if (!data.reply || typeof data.reply !== "string") {
-    throw new Error("Invalid response from RAG server");
+    throw new Error("Invalid response from agent");
   }
   return data.reply;
 }
@@ -141,7 +142,11 @@ function appendMessage(role, text) {
 
   const bubble = document.createElement("div");
   bubble.className = "bubble";
-  bubble.textContent = text; // safe — no innerHTML
+  if (role === "agent") {
+    bubble.innerHTML = renderMarkdown(text);
+  } else {
+    bubble.textContent = text; // user input — no innerHTML
+  }
 
   wrapper.appendChild(label);
   wrapper.appendChild(bubble);
@@ -172,6 +177,55 @@ function setStatus(state) {
 function setSending(sending) {
   sendBtn.disabled = sending;
   userInput.disabled = sending;
+}
+
+// ── Minimal safe markdown renderer ──────────────────────────────────────────
+// Handles: bold, italic, inline code, code blocks, bullet lists, headers.
+// All raw text is escaped first so there's no XSS risk.
+function renderMarkdown(text) {
+  const esc = (s) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // Process code blocks first (preserve whitespace, escape content)
+  const blocks = [];
+  text = text.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) => {
+    blocks.push(`<pre><code>${esc(code.trimEnd())}</code></pre>`);
+    return `\x00BLOCK${blocks.length - 1}\x00`;
+  });
+
+  // Escape remaining HTML
+  text = esc(text);
+
+  // Inline code
+  text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // Bold
+  text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  // Italic
+  text = text.replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+  // Convert line-by-line
+  const lines = text.split("\n");
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    if (/^#{1,3} /.test(line)) {
+      if (inList) { out.push("</ul>"); inList = false; }
+      const level = line.match(/^(#+)/)[1].length;
+      out.push(`<h${level + 2}>${line.replace(/^#+\s*/, "")}</h${level + 2}>`);
+    } else if (/^[\*\-] /.test(line)) {
+      if (!inList) { out.push("<ul>"); inList = true; }
+      out.push(`<li>${line.replace(/^[\*\-] /, "")}</li>`);
+    } else {
+      if (inList) { out.push("</ul>"); inList = false; }
+      out.push(line ? `<p>${line}</p>` : "");
+    }
+  }
+  if (inList) out.push("</ul>");
+
+  let html = out.join("\n");
+  // Restore code blocks (already escaped, no double-escaping)
+  html = html.replace(/\x00BLOCK(\d+)\x00/g, (_, i) => blocks[+i]);
+  return html;
 }
 
 // Auto-grow textarea

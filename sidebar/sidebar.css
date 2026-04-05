@@ -130,6 +130,37 @@ body {
 .message.user  .bubble { background: var(--user-bubble); border-bottom-right-radius: 2px; }
 .message.agent .bubble { background: var(--agent-bubble); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
 
+/* Markdown rendering inside agent bubbles */
+.message.agent .bubble p  { margin-bottom: 6px; }
+.message.agent .bubble p:last-child { margin-bottom: 0; }
+.message.agent .bubble ul { padding-left: 18px; margin-bottom: 6px; }
+.message.agent .bubble li { margin-bottom: 2px; }
+.message.agent .bubble h4,
+.message.agent .bubble h5 { font-size: 12px; font-weight: 600; margin: 8px 0 4px; color: var(--accent); }
+.message.agent .bubble code {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  background: #12151f;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.message.agent .bubble pre {
+  background: #12151f;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+.message.agent .bubble pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  white-space: pre;
+}
+
 .message-label {
   font-size: 10px;
   color: var(--text-muted);
