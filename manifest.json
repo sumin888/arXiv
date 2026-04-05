@@ -13,7 +13,9 @@
   "host_permissions": [
     "https://arxiv.org/*",
     "https://ar5iv.org/*",
-    "https://export.arxiv.org/*"
+    "https://export.arxiv.org/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
 
   "background": {

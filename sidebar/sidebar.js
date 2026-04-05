@@ -2,6 +2,9 @@
 let currentPaper = null;
 const conversationHistory = []; // { role: "user"|"assistant", content: string }
 
+// Local FastAPI RAG server — see backend/docs/RAG.md
+const API_BASE = "http://127.0.0.1:8000";
+
 // ── DOM refs ───────────────────────────────────────────────────────────────
 const paperTitleEl  = document.getElementById("paper-title");
 const paperAuthorsEl = document.getElementById("paper-authors");
@@ -92,14 +95,39 @@ async function sendMessage() {
   }
 }
 
-// ── Agent query (placeholder — will be replaced with real RAG + Claude call)
-async function queryAgent(userText) {
-  // TODO: replace with call to your backend RAG endpoint
-  // e.g. POST /api/query { arxivId, messages: conversationHistory }
-  //
-  // For now: echo back a stub so the UI is testable end-to-end.
-  await sleep(600);
-  return `[Stub] You asked: "${userText}"\n\nOnce the backend is connected, I'll answer using RAG over the full text of "${currentPaper.title}".`;
+// ── Agent query → FastAPI hybrid RAG (sqlite-vec + FTS5) + Claude
+async function queryAgent(_userText) {
+  const res = await fetch(`${API_BASE}/api/query`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      arxivId: currentPaper.arxivId,
+      title: currentPaper.title || "",
+      abstract: currentPaper.abstract || "",
+      messages: conversationHistory,
+    }),
+  });
+  const raw = await res.text();
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(raw.slice(0, 200) || res.statusText);
+  }
+  if (!res.ok) {
+    const d = data.detail;
+    const msg =
+      typeof d === "string"
+        ? d
+        : Array.isArray(d)
+          ? d.map((e) => e.msg || JSON.stringify(e)).join("; ")
+          : JSON.stringify(d);
+    throw new Error(msg || res.statusText);
+  }
+  if (!data.reply || typeof data.reply !== "string") {
+    throw new Error("Invalid response from RAG server");
+  }
+  return data.reply;
 }
 
 // ── UI helpers ──────────────────────────────────────────────────────────────
@@ -152,6 +180,3 @@ userInput.addEventListener("input", () => {
   userInput.style.height = Math.min(userInput.scrollHeight, 120) + "px";
 });
 
-function sleep(ms) {
-  return new Promise((res) => setTimeout(res, ms));
-}
