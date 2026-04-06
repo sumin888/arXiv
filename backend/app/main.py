@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.rag import pipeline
 from app.agent.loop import run_agent
-from app.schemas import ChatRequest, QueryRequest, QueryResponse
+from app.schemas import ChatRequest, IndexRequest, QueryRequest, QueryResponse
 
 
 @asynccontextmanager
@@ -44,6 +44,14 @@ def health():
         "llm_provider": settings.llm_provider,
         "llm_model": model,
     }
+
+
+@app.post("/index")
+async def index_paper(req: IndexRequest, background_tasks: BackgroundTasks):
+    """Trigger PDF download + embedding in the background so the first /chat is instant."""
+    conn = app.state.db
+    background_tasks.add_task(pipeline.ensure_paper_indexed, conn, req.arxiv_id.strip())
+    return {"status": "indexing", "arxivId": req.arxiv_id}
 
 
 @app.post("/api/query", response_model=QueryResponse)

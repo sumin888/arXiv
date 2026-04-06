@@ -14,6 +14,12 @@ class ChatMessage(BaseModel):
     content: str = Field(default="", max_length=500_000)
 
 
+class IndexRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
+
+    arxiv_id: str = Field(..., alias="arxivId", min_length=1, max_length=256)
+
+
 class QueryRequest(BaseModel):
     """Body for POST /api/query. Use JSON keys `arxivId` (camelCase) from the browser extension."""
 

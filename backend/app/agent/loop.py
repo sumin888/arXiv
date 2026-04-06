@@ -66,12 +66,34 @@ async def run_agent(
     messages: list[dict],
     max_iterations: int = 12,
 ) -> str:
+    from app.agent.tool_rag import rag_search
+
     registry = build_registry(conn, arxiv_id)
+
+    # Pre-fetch RAG results for the user's query so the LLM sees paper context
+    # on the very first call — this cuts the common case from 2 LLM calls to 1.
+    last_user = next(
+        (m["content"] for m in reversed(messages) if m.get("role") == "user" and m.get("content", "").strip()),
+        "",
+    )
+    pre_context = ""
+    if last_user:
+        try:
+            pre_context = await rag_search(conn, arxiv_id, last_user)
+        except Exception:
+            pass  # indexing not yet done; agent will call rag_search itself
+
     system = _SYSTEM.format(
         paper_title=paper_title or arxiv_id,
         arxiv_id=arxiv_id,
         abstract=(abstract or "(none)")[:800],
     )
+    if pre_context:
+        system += (
+            "\n\n---\nPre-fetched paper excerpts for this query (use directly if sufficient; "
+            "call rag_search again only if you need a different angle):\n\n"
+            + pre_context
+        )
 
     provider = settings.llm_provider.lower().strip()
     if provider == "anthropic":

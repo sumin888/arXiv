@@ -49,10 +49,16 @@ export function ExtensionSidebar({ paper }: { paper: NormalizedPaper | null }) {
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Reset conversation when paper changes
+  // Reset conversation and kick off background indexing when paper changes
   useEffect(() => {
     if (paper) {
       setMessages([{ role: "assistant", content: buildGreeting(paper) }])
+      // Fire-and-forget: index the PDF in the background so the first message is fast
+      fetch(`${API_BASE}/index`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ arxivId: paper.arxivId }),
+      }).catch(() => {/* backend not running yet — /chat will index on demand */})
     } else {
       setMessages([])
     }
