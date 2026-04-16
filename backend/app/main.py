@@ -86,6 +86,10 @@ async def chat(req: ChatRequest):
             paper_title=req.title.strip(),
             abstract=req.abstract.strip(),
             messages=msgs,
+            message_count=req.message_count,
+            primary_category=req.primary_category.strip(),
+            active_bridge_id=req.active_bridge_id.strip(),
+            active_bridge_title=req.active_bridge_title.strip(),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

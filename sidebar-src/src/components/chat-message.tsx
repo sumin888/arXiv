@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ToolExecutionGroup, type ToolType, type ToolStatus } from "./tool-execution"
+import { BridgeCard, type BridgeData } from "./bridge-card"
 import { Bot, User } from "lucide-react"
 
 interface Tool {
@@ -17,9 +18,20 @@ interface ChatMessageProps {
   content: string
   tools?: Tool[]
   isStreaming?: boolean
+  bridge?: BridgeData | null
+  onBridgeExplore?: (bridge: BridgeData) => void
+  onBridgeDismiss?: () => void
 }
 
-export function ChatMessage({ role, content, tools, isStreaming }: ChatMessageProps) {
+export function ChatMessage({
+  role,
+  content,
+  tools,
+  isStreaming,
+  bridge,
+  onBridgeExplore,
+  onBridgeDismiss,
+}: ChatMessageProps) {
   const isUser = role === "user"
 
   return (
@@ -40,7 +52,7 @@ export function ChatMessage({ role, content, tools, isStreaming }: ChatMessagePr
             {content}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {tools && tools.length > 0 && <ToolExecutionGroup tools={tools} />}
             <div
               className={cn(
@@ -50,6 +62,13 @@ export function ChatMessage({ role, content, tools, isStreaming }: ChatMessagePr
             >
               {content}
             </div>
+            {bridge && onBridgeExplore && onBridgeDismiss && (
+              <BridgeCard
+                bridge={bridge}
+                onExplore={onBridgeExplore}
+                onDismiss={onBridgeDismiss}
+              />
+            )}
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ response or max_iterations is reached.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 
 from app.config import settings
@@ -16,13 +17,18 @@ _SYSTEM = """\
 You are an expert AI research assistant helping users understand, reproduce, and \
 build on arXiv papers. You have access to several tools — use them proactively:
 
-• rag_search        — search the full text of the current paper (use first for any \
+• rag_search          — search the full text of the current paper (use first for any \
 paper-specific question)
-• search_arxiv      — find related papers
-• fetch_citations   — citation data from Semantic Scholar
-• fetch_github_repo — explore code repos linked to the paper
-• execute_python    — run code in a sandboxed environment (E2B)
-• compare_results   — diff experiment output against reported numbers
+• search_arxiv        — find related papers
+• fetch_citations     — citation data from Semantic Scholar
+• fetch_github_repo   — explore a GitHub repo's metadata, README, and file tree
+• run_experiment      — clone a GitHub repo, install deps, find entry point, and run it \
+end-to-end to reproduce results
+• execute_python      — run arbitrary Python code locally (no repo needed)
+• compare_results     — auto-extract reported metrics from the paper via RAG and diff \
+against experiment output; only actual_output is required
+• sample_bridge_paper — find a paper from a DIFFERENT domain that uses the same core \
+methods, surfacing cross-disciplinary connections
 
 Ground every answer in evidence. Cite chunk IDs when quoting the paper.
 
@@ -30,12 +36,93 @@ Current paper: {paper_title}  (arXiv:{arxiv_id})
 Abstract: {abstract}"""
 
 
+# ── Bridge helpers ────────────────────────────────────────────────────────────
+
+_STOP = frozenset(
+    "the a an of in to for and with on by is are we our this that which from be "
+    "as it its at or has have been was were their can not but they these those each "
+    "all also such than into more most both between through over about while show "
+    "use used using propose proposed present paper model result results approach "
+    "method methods task tasks learn learning based show shows demonstrate".split()
+)
+
+
+def _extract_keywords(abstract: str, n: int = 4) -> list[str]:
+    """Pull the first n meaningful words from the abstract for use as bridge keywords."""
+    words = re.findall(r"\b[a-zA-Z][a-zA-Z\-]{3,}\b", abstract)
+    seen: set[str] = set()
+    keywords: list[str] = []
+    for w in words:
+        lw = w.lower()
+        if lw not in _STOP and lw not in seen:
+            seen.add(lw)
+            keywords.append(w)
+        if len(keywords) >= n:
+            break
+    return keywords
+
+
+async def _build_bridge_tag(abstract: str, primary_category: str) -> str:
+    """Call sample_bridge_paper directly and format the result as a <bridge> XML tag."""
+    from app.agent.tool_bridge import sample_bridge_paper
+
+    keywords = _extract_keywords(abstract)
+    if not keywords:
+        return ""
+
+    try:
+        result = await sample_bridge_paper(keywords, primary_category)
+    except Exception:
+        return ""
+
+    if "No bridge paper" in result or "Could not parse" in result:
+        return ""
+
+    # Parse key: value lines from the tool output
+    data: dict[str, str] = {}
+    for line in result.splitlines():
+        if ": " in line:
+            k, v = line.split(": ", 1)
+            data[k.strip()] = v.strip()
+
+    arxiv_id = data.get("arxiv_id", "")
+    title = data.get("title", "")
+    domain = data.get("domain", "")
+    bridge_reason = data.get("bridge_reason", "")
+
+    if not arxiv_id or not title:
+        return ""
+
+    method = keywords[0] if keywords else "similar methods"
+
+    return (
+        f'\n\n<bridge arxiv_id="{arxiv_id}">\n'
+        f"✦ {title} ({domain}) applies {method} in a different context.\n"
+        f"{bridge_reason} Want to explore this?\n"
+        f"</bridge>"
+    )
+
+# Added to the system prompt when the user is exploring a bridge paper
+_BRIDGE_CONTEXT = """\
+
+---
+BRIDGE EXPLORATION MODE
+The user is now exploring a bridge paper alongside the current paper.
+Bridge paper: "{bridge_title}" (arXiv:{bridge_id})
+
+You have RAG excerpts from BOTH papers below. Compare how the shared method is used \
+in each context. Offer concrete suggestions for what it would look like to apply \
+the bridge paper's approach to the current paper's problem."""
+
+
 def build_registry(conn: sqlite3.Connection, arxiv_id: str) -> ToolRegistry:
     """Wire all tools into a registry bound to the current paper."""
     from app.agent import (
         tool_arxiv,
+        tool_bridge,
         tool_citations,
         tool_execute,
+        tool_experiment,
         tool_github,
         tool_rag,
         tool_results,
@@ -51,8 +138,13 @@ def build_registry(conn: sqlite3.Connection, arxiv_id: str) -> ToolRegistry:
     registry.register(tool_arxiv.SCHEMA, tool_arxiv.search_arxiv)
     registry.register(tool_citations.SCHEMA, tool_citations.fetch_citations)
     registry.register(tool_github.SCHEMA, tool_github.fetch_github_repo)
+    registry.register(tool_experiment.SCHEMA, tool_experiment.run_experiment)
     registry.register(tool_execute.SCHEMA, tool_execute.execute_python)
-    registry.register(tool_results.SCHEMA, tool_results.compare_results)
+    registry.register(tool_bridge.SCHEMA, tool_bridge.sample_bridge_paper)
+
+    # compare_results is wired with the RAG fetcher so it auto-extracts paper metrics
+    compare_fn = tool_results.make_compare_results(rag_fetcher=_rag)
+    registry.register(tool_results.SCHEMA, compare_fn)
 
     return registry
 
@@ -64,18 +156,28 @@ async def run_agent(
     paper_title: str,
     abstract: str,
     messages: list[dict],
+    message_count: int = 0,
+    primary_category: str = "",
+    active_bridge_id: str = "",
+    active_bridge_title: str = "",
     max_iterations: int = 12,
 ) -> str:
     from app.agent.tool_rag import rag_search
+    from app.rag.pipeline import ensure_paper_indexed
 
     registry = build_registry(conn, arxiv_id)
 
     # Pre-fetch RAG results for the user's query so the LLM sees paper context
     # on the very first call — this cuts the common case from 2 LLM calls to 1.
     last_user = next(
-        (m["content"] for m in reversed(messages) if m.get("role") == "user" and m.get("content", "").strip()),
+        (
+            m["content"]
+            for m in reversed(messages)
+            if m.get("role") == "user" and m.get("content", "").strip()
+        ),
         "",
     )
+
     pre_context = ""
     if last_user:
         try:
@@ -88,19 +190,52 @@ async def run_agent(
         arxiv_id=arxiv_id,
         abstract=(abstract or "(none)")[:800],
     )
+
+    # ── Bridge exploration: dual-paper RAG ────────────────────────────────────
+    if active_bridge_id and active_bridge_title:
+        system += _BRIDGE_CONTEXT.format(
+            bridge_title=active_bridge_title,
+            bridge_id=active_bridge_id,
+        )
+
+        bridge_context = ""
+        if last_user:
+            try:
+                await ensure_paper_indexed(conn, active_bridge_id)
+                bridge_context = await rag_search(conn, active_bridge_id, last_user)
+            except Exception:
+                pass
+
+        if bridge_context:
+            system += (
+                f"\n\nBridge paper excerpts ({active_bridge_id}):\n\n" + bridge_context
+            )
+
+    # ── Inject pre-fetched main-paper context ─────────────────────────────────
     if pre_context:
         system += (
-            "\n\n---\nPre-fetched paper excerpts for this query (use directly if sufficient; "
-            "call rag_search again only if you need a different angle):\n\n"
+            "\n\n---\nPre-fetched excerpts from current paper "
+            "(use directly if sufficient; call rag_search again only if you need a different angle):\n\n"
             + pre_context
         )
 
     provider = settings.llm_provider.lower().strip()
     if provider == "anthropic":
-        return await _loop_anthropic(system, messages, registry, max_iterations)
-    if provider == "openrouter":
-        return await _loop_openrouter(system, messages, registry, max_iterations)
-    raise RuntimeError(f"Unknown LLM_PROVIDER: {settings.llm_provider!r}")
+        reply = await _loop_anthropic(system, messages, registry, max_iterations)
+    elif provider == "openrouter":
+        reply = await _loop_openrouter(system, messages, registry, max_iterations)
+    else:
+        raise RuntimeError(f"Unknown LLM_PROVIDER: {settings.llm_provider!r}")
+
+    # ── Backend-driven bridge injection (every 3rd user message) ─────────────
+    # Done here rather than relying on the LLM to call the tool — guarantees
+    # the bridge always fires regardless of model quality.
+    if message_count > 0 and message_count % 3 == 0 and "<bridge" not in reply:
+        bridge_tag = await _build_bridge_tag(abstract or paper_title, primary_category)
+        if bridge_tag:
+            reply = reply.rstrip() + bridge_tag
+
+    return reply
 
 
 # ── Anthropic ───────────────────────────────────────────────────────────────

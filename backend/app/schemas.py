@@ -55,6 +55,11 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(..., min_length=1)
     # Reserved for future per-request tool filtering; empty = all tools enabled
     tools: list[str] = Field(default_factory=list)
+    # Conceptual drift / bridge feature
+    message_count: int = Field(default=0, alias="messageCount", ge=0)
+    primary_category: str = Field(default="", alias="primaryCategory", max_length=64)
+    active_bridge_id: str = Field(default="", alias="activeBridgeId", max_length=256)
+    active_bridge_title: str = Field(default="", alias="activeBridgeTitle", max_length=1000)
 
     @model_validator(mode="after")
     def last_nonempty_turn_is_user(self):

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from typing import Any
 
 from app.config import settings
+
+# Transformers 4.50+ logs a verbose "BertModel LOAD REPORT" table for benign
+# unexpected keys (e.g. embeddings.position_ids). It is noise for our use case.
+logging.getLogger("transformers.utils.loading_report").setLevel(logging.ERROR)
 
 _model_lock = threading.Lock()
 _model: Any = None

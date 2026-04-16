@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaperContext } from "./paper-context"
 import { ChatMessage } from "./chat-message"
 import { ChatInput } from "./chat-input"
+import { ThinkingIndicator } from "./thinking-indicator"
+import { parseBridgeTag, type BridgeData } from "./bridge-card"
 import {
   MessageSquare,
   Code2,
@@ -29,6 +31,14 @@ export interface NormalizedPaper {
 interface Message {
   role: "user" | "assistant"
   content: string
+  bridge?: BridgeData | null
+  bridgeDismissed?: boolean
+}
+
+interface ActiveBridge {
+  arxivId: string
+  title: string
+  ragReady: boolean
 }
 
 function buildGreeting(paper: NormalizedPaper): string {
@@ -39,28 +49,41 @@ function buildGreeting(paper: NormalizedPaper): string {
       : names.join(" and ") + (paper.authors.length > 2 ? " et al." : "")
   return (
     `I've loaded and indexed the full text of "${paper.title}" by ${authorStr}.\n\n` +
-    `I can search the paper, find related work, fetch GitHub implementations, and run sandboxed experiment code. What would you like to explore?`
+    `I can search the paper, find related work, fetch GitHub implementations, run experiment code, and surface cross-domain connections. What would you like to explore?`
   )
+}
+
+/** Extract arxiv_id title hint from bridge content (first bold-looking title segment) */
+function extractBridgeTitle(content: string): string {
+  // Content looks like: ✦ Title (domain) uses method…
+  const m = content.match(/✦\s+(.+?)\s+\(/)
+  return m ? m[1].trim() : "bridge paper"
 }
 
 export function ExtensionSidebar({ paper }: { paper: NormalizedPaper | null }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  // Session state for bridge / conceptual drift
+  const [messageCount, setMessageCount] = useState(0)
+  const [activeBridge, setActiveBridge] = useState<ActiveBridge | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Reset conversation and kick off background indexing when paper changes
   useEffect(() => {
     if (paper) {
       setMessages([{ role: "assistant", content: buildGreeting(paper) }])
-      // Fire-and-forget: index the PDF in the background so the first message is fast
+      setMessageCount(0)
+      setActiveBridge(null)
       fetch(`${API_BASE}/index`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ arxivId: paper.arxivId }),
-      }).catch(() => {/* backend not running yet — /chat will index on demand */})
+      }).catch(() => {/* backend not running — /chat will index on demand */})
     } else {
       setMessages([])
+      setMessageCount(0)
+      setActiveBridge(null)
     }
   }, [paper?.arxivId])
 
@@ -68,12 +91,15 @@ export function ExtensionSidebar({ paper }: { paper: NormalizedPaper | null }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isLoading])
 
-  const handleSend = async (text: string) => {
+  const sendMessage = async (text: string, overrideHistory?: Message[]) => {
     if (!paper || isLoading) return
+
     const userMsg: Message = { role: "user", content: text }
-    const history = [...messages, userMsg]
-    setMessages(history)
+    const history = overrideHistory ?? [...messages, userMsg]
+    if (!overrideHistory) setMessages(history)
     setIsLoading(true)
+
+    const nextCount = messageCount + 1
 
     try {
       const res = await fetch(`${API_BASE}/chat`, {
@@ -85,6 +111,10 @@ export function ExtensionSidebar({ paper }: { paper: NormalizedPaper | null }) {
           abstract: paper.abstract,
           messages: history.map((m) => ({ role: m.role, content: m.content })),
           tools: [],
+          messageCount: nextCount,
+          primaryCategory: paper.categories[0] ?? "",
+          activeBridgeId: activeBridge?.arxivId ?? "",
+          activeBridgeTitle: activeBridge?.title ?? "",
         }),
       })
       const raw = await res.text()
@@ -105,13 +135,59 @@ export function ExtensionSidebar({ paper }: { paper: NormalizedPaper | null }) {
         throw new Error(msg || res.statusText)
       }
       if (!data.reply) throw new Error("Empty response from agent")
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply! }])
+
+      // Parse <bridge> tag out of the reply
+      const { main, bridge } = parseBridgeTag(data.reply)
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: main, bridge: bridge ?? null },
+      ])
+      setMessageCount(nextCount)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
-      setMessages((prev) => [...prev, { role: "assistant", content: `Sorry, something went wrong: ${msg}` }])
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Sorry, something went wrong: ${msg}` },
+      ])
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSend = async (text: string) => {
+    if (!paper || isLoading) return
+    const userMsg: Message = { role: "user", content: text }
+    const history = [...messages, userMsg]
+    setMessages(history)
+    await sendMessage(text, history)
+  }
+
+  const handleBridgeExplore = async (bridge: BridgeData) => {
+    if (!paper || isLoading) return
+
+    const title = extractBridgeTitle(bridge.content)
+    const newBridge: ActiveBridge = {
+      arxivId: bridge.arxivId,
+      title,
+      ragReady: false,
+    }
+    setActiveBridge(newBridge)
+
+    const prompt =
+      `Let's explore "${title}" (arXiv:${bridge.arxivId}) alongside the current paper. ` +
+      `How does its approach compare? What would applying its method to this paper look like?`
+
+    const userMsg: Message = { role: "user", content: prompt }
+    const history = [...messages, userMsg]
+    setMessages(history)
+    await sendMessage(prompt, history)
+  }
+
+  const handleBridgeDismiss = (msgIndex: number) => {
+    setMessages((prev) =>
+      prev.map((m, i) => (i === msgIndex ? { ...m, bridgeDismissed: true } : m))
+    )
   }
 
   const suggestions = ["Explain the methodology", "What are the key results?", "Find related work"]
@@ -144,10 +220,22 @@ export function ExtensionSidebar({ paper }: { paper: NormalizedPaper | null }) {
           </div>
           <div>
             <h1 className="text-sm font-semibold text-foreground">PaperAgent</h1>
-            <p className="text-[10px] text-muted-foreground">arxiv.org active</p>
+            <p className="text-[10px] text-muted-foreground">
+              {activeBridge ? `Exploring bridge: ${activeBridge.title.slice(0, 28)}…` : "arxiv.org active"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {activeBridge && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[10px] text-muted-foreground hover:text-foreground px-2"
+              onClick={() => setActiveBridge(null)}
+            >
+              ✕ Bridge
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -196,15 +284,16 @@ export function ExtensionSidebar({ paper }: { paper: NormalizedPaper | null }) {
         >
           <div className="flex-1 overflow-y-auto px-4 py-2">
             {messages.map((msg, i) => (
-              <ChatMessage key={i} role={msg.role} content={msg.content} />
-            ))}
-            {isLoading && (
               <ChatMessage
-                role="assistant"
-                content="Analyzing your request and calling tools…"
-                isStreaming
+                key={i}
+                role={msg.role}
+                content={msg.content}
+                bridge={msg.bridge && !msg.bridgeDismissed ? msg.bridge : null}
+                onBridgeExplore={handleBridgeExplore}
+                onBridgeDismiss={() => handleBridgeDismiss(i)}
               />
-            )}
+            ))}
+            {isLoading && <ThinkingIndicator />}
             <div ref={messagesEndRef} />
           </div>
           <ChatInput
