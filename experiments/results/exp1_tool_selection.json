@@ -1,0 +1,302 @@
+[
+  {
+    "arxiv_id": "1706.03762",
+    "domain": "NLP",
+    "title": "Attention Is All You Need",
+    "question_type": "factual",
+    "latency_s": 41.921,
+    "status": "ok",
+    "reply_len": 405,
+    "reply_snippet": "The main contribution of the paper is introducing the **Transformer architecture**, which relies entirely on attention mechanisms (dispensing with recurrence and convolutions) for sequence transductio"
+  },
+  {
+    "arxiv_id": "1810.04805",
+    "domain": "NLP",
+    "title": "BERT",
+    "question_type": "factual",
+    "latency_s": 120.021,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2010.11929",
+    "domain": "Vision",
+    "title": "An Image is Worth 16x16 Words (ViT)",
+    "question_type": "factual",
+    "latency_s": 120.028,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2209.01188",
+    "domain": "Systems",
+    "title": "FlashAttention",
+    "question_type": "factual",
+    "latency_s": 120.022,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2307.08621",
+    "domain": "NLP",
+    "title": "LongLoRA",
+    "question_type": "factual",
+    "latency_s": 120.019,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2005.14165",
+    "domain": "NLP",
+    "title": "Language Models are Few-Shot Learners (GPT-3)",
+    "question_type": "factual",
+    "latency_s": 120.038,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2302.13971",
+    "domain": "NLP",
+    "title": "LLaMA",
+    "question_type": "factual",
+    "latency_s": 41.916,
+    "status": "ok",
+    "reply_len": 324,
+    "reply_snippet": "The main contributionof the LLaMA paper is introducing a large, scalable language model using a unified text-to-text transformer architecture to efficiently perform diverse natural language tasks acro"
+  },
+  {
+    "arxiv_id": "2307.09288",
+    "domain": "NLP",
+    "title": "LLaMA 2",
+    "question_type": "factual",
+    "latency_s": 120.018,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2204.02311",
+    "domain": "NLP",
+    "title": "PaLM",
+    "question_type": "factual",
+    "latency_s": 120.031,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2205.01068",
+    "domain": "NLP",
+    "title": "Training Compute-Optimal LLMs (Chinchilla)",
+    "question_type": "factual",
+    "latency_s": 120.032,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2201.11903",
+    "domain": "Reasoning",
+    "title": "Chain-of-Thought Prompting",
+    "question_type": "factual",
+    "latency_s": 120.024,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2210.11610",
+    "domain": "Agents",
+    "title": "ReAct",
+    "question_type": "factual",
+    "latency_s": 120.034,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2210.03629",
+    "domain": "Reasoning",
+    "title": "Self-Consistency",
+    "question_type": "factual",
+    "latency_s": 41.912,
+    "status": "ok",
+    "reply_len": 331,
+    "reply_snippet": "Thepaper's main contribution is introducing the ReAct framework, which combines reasoning (thoughts) and actions to enable language models to solve complex tasks through decomposable thought processes"
+  },
+  {
+    "arxiv_id": "2302.04761",
+    "domain": "Agents",
+    "title": "Toolformer",
+    "question_type": "factual",
+    "latency_s": 63.716,
+    "status": "ok",
+    "reply_len": 445,
+    "reply_snippet": "Themain contribution of the paper is introducing **Toolformer**, a framework that enables language models to autonomously identify and utilize external tools (e.g., calculators, search engines, APIs) "
+  },
+  {
+    "arxiv_id": "2203.02155",
+    "domain": "Alignment",
+    "title": "InstructGPT (RLHF)",
+    "question_type": "factual",
+    "latency_s": 120.032,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2103.00020",
+    "domain": "Multimodal",
+    "title": "CLIP",
+    "question_type": "factual",
+    "latency_s": 120.028,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2304.08485",
+    "domain": "Multimodal",
+    "title": "LLaVA",
+    "question_type": "factual",
+    "latency_s": 120.022,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2301.12597",
+    "domain": "Multimodal",
+    "title": "BLIP-2",
+    "question_type": "factual",
+    "latency_s": 120.017,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2103.14030",
+    "domain": "Vision",
+    "title": "Swin Transformer",
+    "question_type": "factual",
+    "latency_s": 107.199,
+    "status": "ok",
+    "reply_len": 313,
+    "reply_snippet": "The main contribution of the Swin Transformer paper is introducing a vision Transformer architecture that uses shifted window-based self-attention to enable efficient hierarchical feature learning wit"
+  },
+  {
+    "arxiv_id": "2005.12872",
+    "domain": "Vision",
+    "title": "DETR",
+    "question_type": "factual",
+    "latency_s": 120.022,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2112.10752",
+    "domain": "Generative",
+    "title": "Latent Diffusion Models",
+    "question_type": "factual",
+    "latency_s": 120.029,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "1406.2661",
+    "domain": "Generative",
+    "title": "Generative Adversarial Networks (GAN)",
+    "question_type": "factual",
+    "latency_s": 120.024,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "1312.6114",
+    "domain": "Generative",
+    "title": "Auto-Encoding Variational Bayes (VAE)",
+    "question_type": "factual",
+    "latency_s": 120.023,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2210.09477",
+    "domain": "Generative",
+    "title": "Imagic",
+    "question_type": "factual",
+    "latency_s": 120.019,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2211.09800",
+    "domain": "Generative",
+    "title": "InstructPix2Pix",
+    "question_type": "factual",
+    "latency_s": 120.016,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "1412.6980",
+    "domain": "Optimization",
+    "title": "Adam Optimizer",
+    "question_type": "factual",
+    "latency_s": 120.021,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "1607.06450",
+    "domain": "Optimization",
+    "title": "Layer Normalization",
+    "question_type": "factual",
+    "latency_s": 120.024,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "1512.03385",
+    "domain": "Vision",
+    "title": "Deep Residual Learning (ResNet)",
+    "question_type": "factual",
+    "latency_s": 120.025,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  },
+  {
+    "arxiv_id": "2108.01398",
+    "domain": "Biology",
+    "title": "ESM: Evolutionary Scale Modeling",
+    "question_type": "factual",
+    "latency_s": 86.816,
+    "status": "ok",
+    "reply_len": 355,
+    "reply_snippet": "The main contribution of this paper is introducing an evolutionary scale modeling framework that constructs finite common covering complexes for amalgamated free products, particularly demonstrating t"
+  },
+  {
+    "arxiv_id": "2202.05924",
+    "domain": "Code",
+    "title": "Competition-Level Code Generation (AlphaCode)",
+    "question_type": "factual",
+    "latency_s": 120.024,
+    "status": "error: ReadTimeout",
+    "reply_len": 0,
+    "reply_snippet": ""
+  }
+]
